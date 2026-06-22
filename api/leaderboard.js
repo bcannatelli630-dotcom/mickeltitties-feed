@@ -29,7 +29,8 @@ const EVENTS = {
 const ALIAS = { 'Matt Fitzpatrick': 'Matthew Fitzpatrick' };
 
 export default async function handler(req, res) {
-  const E = EVENTS[ACTIVE];
+  const sel = (req.query && req.query.event) || ACTIVE;
+  const E = EVENTS[sel] || EVENTS[ACTIVE];
   const url = `https://${HOST}/leaderboard?orgId=${ORG}&tournId=${E.tournId}&year=${YEAR}`;
 
   let raw;
