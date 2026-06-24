@@ -25,8 +25,11 @@ const EVENTS = {
   open:    { tournId: '100', name: 'The Open',          teeOff: '2026-07-16T06:30:00Z' },
 };
 
-// If Slash Golf spells a name differently than your roster, map it here (feedName: rosterName).
-const ALIAS = { 'Matt Fitzpatrick': 'Matthew Fitzpatrick' };
+// Name reconciliation. The draft board (field.js) and this leaderboard BOTH come from the same
+// Slash Golf feed, so names already match — do NOT remap here or the app can't find a drafted
+// player's score (it would silently show them at Even / made-cut). Leave this empty unless you
+// truly need to bridge a manually-typed roster name, and if so add the SAME mapping to field.js.
+const ALIAS = {};
 
 export default async function handler(req, res) {
   const sel = (req.query && req.query.event) || ACTIVE;
