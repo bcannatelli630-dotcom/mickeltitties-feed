@@ -418,7 +418,8 @@ body{margin:0; background:#0a0a0a;}
               <sc-for list="{{rankings}}" as="rk" hint-placeholder-count="10">
                 <div style="display:flex; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid var(--line);">
                   <span style="width:26px; font-family:var(--fn); font-weight:700; font-size:14px; color:var(--fnt);">{{rk.pos}}</span>
-                  <div style="flex:1; min-width:0; font-family:var(--fb); font-weight:600; font-size:14px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{rk.name}}</div>
+                  <sc-if value="{{rk.taken}}" hint-placeholder-val="{{false}}"><div style="flex:1; min-width:0; font-family:var(--fb); font-weight:600; font-size:14px; color:var(--fnt); text-decoration:line-through; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{rk.name}}</div></sc-if>
+                  <sc-if value="{{!rk.taken}}" hint-placeholder-val="{{true}}"><div style="flex:1; min-width:0; font-family:var(--fb); font-weight:600; font-size:14px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{rk.name}}</div></sc-if>
                   <span style="font-family:var(--fn); font-weight:700; font-size:13px; color:var(--acc);">{{rk.priceStr}}</span>
                 </div>
               </sc-for>
@@ -1960,7 +1961,8 @@ class Component extends DCLogic {
       .sort((a,b)=>{ const oa=this.oddsVal(a.odds), ob=this.oddsVal(b.odds); if(oa==null&&ob==null) return a.n.localeCompare(b.n); if(oa==null) return 1; if(ob==null) return -1; return oa-ob; });
     const avail = q ? availAll.filter(a=>(a.n||'').toLowerCase().includes(q)) : availAll;
     const oddsCache = this.loadOddsCache(S.theme);
-    const rankings = (oddsCache||[]).map((o,i)=>({ pos:i+1, name:o.name, priceStr:(o.price>0?'+':'')+o.price }));
+    const draftedNames = new Set((S.drafted||[]).map(x=>x.player));
+    const rankings = (oddsCache||[]).map((o,i)=>({ pos:i+1, name:o.name, priceStr:(o.price>0?'+':'')+o.price, taken:draftedNames.has(o.name) }));
     const availCountStr = 'AVAILABLE \u00b7 ' + availAll.length;
     const recent = drafted.slice(-3).reverse().map(d=>({ n:d.player, by:this.PARTS[d.pid].name.split(' ')[0] }));
     // full tournament leaderboard (everyone in the field, not just drafted)
