@@ -5,8 +5,8 @@ const KEY = process.env.NEWS_API_KEY;
 
 export default async function handler(req, res) {
   if (!KEY) { res.status(200).json({ articles: [] }); return; }
-  const q = (req.query && req.query.q) || 'golf';
-  const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(q)}&lang=en&max=10&apikey=${KEY}`;
+  const q = ((req.query && req.query.q) || 'golf') ;
+  const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(q)}&lang=en&max=10&topic=sports&apikey=${KEY}`;
 
   let raw;
   try {
