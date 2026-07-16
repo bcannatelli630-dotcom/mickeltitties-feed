@@ -54,6 +54,7 @@ export default async function handler(req, res) {
       score: toPar(r.total),
       cut:   !(r.status === 'cut' || r.status === 'wd' || r.position === 'CUT'),
       thru:  r.thru || '',
+      started: r.status !== 'not started',
     };
   }
 
