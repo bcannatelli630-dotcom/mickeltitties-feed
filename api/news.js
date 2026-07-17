@@ -40,5 +40,6 @@ export default async function handler(req, res) {
 
   res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=450');
   res.setHeader('Access-Control-Allow-Origin', '*');
+  articles.sort((a,b)=> new Date(b.publishedAt) - new Date(a.publishedAt));
   res.status(200).json({ articles });
 }
