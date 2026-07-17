@@ -58,9 +58,17 @@ export default async function handler(req, res) {
     };
   }
 
+  // Round number: Slash Golf reports this per-player (currentRound), not at the top level.
+  // Take the max currentRound across the field so "round 3" (Sat) unlocks cut status app-wide.
+  let round = 0;
+  for (const r of (raw.leaderboardRows || [])) {
+    const cr = Number(r.currentRound || 0);
+    if (cr > round) round = cr;
+  }
+
   const body = {
     event:   E.name,
-    round:   Number(raw.roundId?.['$numberInt'] ?? raw.roundId ?? 0),
+    round,
     status:  /complete|final|official/i.test(raw.status || '') ? 'final' : 'live',
     updated: new Date().toISOString(),
     teeOff:  E.teeOff,
