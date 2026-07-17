@@ -50,9 +50,12 @@ export default async function handler(req, res) {
   for (const r of (raw.leaderboardRows || [])) {
     const name = `${r.firstName || ''} ${r.lastName || ''}`.trim();
     if (!name) continue;
+    const posStr = String(r.position || '').toUpperCase();
+    const statStr = String(r.status || '').toLowerCase();
+    const isCut = /^(cut|wd|dq|w\/d)$/.test(statStr) || /^(CUT|WD|DQ|W\/D)$/.test(posStr);
     players[ALIAS[name] || name] = {
       score: toPar(r.total),
-      cut:   !(r.status === 'cut' || r.status === 'wd' || r.position === 'CUT'),
+      cut:   !isCut,
       thru:  r.thru || '',
       started: !!(r.thru || (r.rounds && r.rounds.length) || Number(r.currentRound) > 0 || (r.total != null && r.total !== '' && r.status !== 'not started')),
     };
