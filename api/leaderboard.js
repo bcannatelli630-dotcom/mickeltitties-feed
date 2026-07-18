@@ -53,11 +53,14 @@ export default async function handler(req, res) {
     const posStr = String(r.position || '').toUpperCase();
     const statStr = String(r.status || '').toLowerCase();
     const isCut = /^(cut|wd|dq|w\/d)$/.test(statStr) || /^(CUT|WD|DQ|W\/D)$/.test(posStr);
+    const teeTs = r.teeTimeTimestamp ? Date.parse(r.teeTimeTimestamp) : NaN;
+    const teePassed = !isNaN(teeTs) && Date.now() >= teeTs;
+    const totalRaw = (r.total != null && r.total !== '') ? r.total : (r.score != null ? r.score : (r.totalScore != null ? r.totalScore : (r.scoreToPar != null ? r.scoreToPar : null)));
     players[ALIAS[name] || name] = {
-      score: toPar(r.total),
+      score: toPar(totalRaw),
       cut:   !isCut,
       thru:  r.thru || '',
-      started: !!(r.thru || (r.rounds && r.rounds.length) || Number(r.currentRound) > 0 || (r.total != null && r.total !== '' && r.status !== 'not started')),
+      started: !!(r.thru || (r.rounds && r.rounds.length) || Number(r.currentRound) > 0 || teePassed || (totalRaw != null && totalRaw !== '' && r.status !== 'not started')),
     };
   }
 
@@ -78,8 +81,8 @@ export default async function handler(req, res) {
     players,
   };
 
-  // Edge cache: 8 people refreshing only hits Slash Golf once per 5 min.
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=120');
+  // Cache disabled temporarily while confirming the fix — re-enable s-maxage=300 once verified live.
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.status(200).json(body);
 }
@@ -87,7 +90,9 @@ export default async function handler(req, res) {
 // "-12" -> -12,  "E" -> 0,  "+3" -> 3
 function toPar(v) {
   if (v == null) return 0;
+  if (typeof v === 'object') { v = v['$numberInt'] ?? v['$numberDouble'] ?? v.value ?? 0; }
   const s = String(v).trim();
   if (s === 'E' || s === '') return 0;
-  return parseInt(s, 10);
+  const n = parseInt(s, 10);
+  return isNaN(n) ? 0 : n;
 }
