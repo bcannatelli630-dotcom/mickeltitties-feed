@@ -47,6 +47,7 @@ export default async function handler(req, res) {
   }
 
   const players = {};
+  const needsThru = [];  // playerId+name pairs whose round is in progress but the leaderboard gave no thru
   for (const r of (raw.leaderboardRows || [])) {
     const name = `${r.firstName || ''} ${r.lastName || ''}`.trim();
     if (!name) continue;
@@ -56,12 +57,31 @@ export default async function handler(req, res) {
     const teeTs = r.teeTimeTimestamp ? Date.parse(r.teeTimeTimestamp) : NaN;
     const teePassed = !isNaN(teeTs) && Date.now() >= teeTs;
     const totalRaw = (r.total != null && r.total !== '') ? r.total : (r.score != null ? r.score : (r.totalScore != null ? r.totalScore : (r.scoreToPar != null ? r.scoreToPar : null)));
-    players[ALIAS[name] || name] = {
-      score: toPar(totalRaw),
-      cut:   !isCut,
-      thru:  r.thru || '',
-      started: !!(r.thru || (r.rounds && r.rounds.length) || Number(r.currentRound) > 0 || teePassed || (totalRaw != null && totalRaw !== '' && r.status !== 'not started')),
-    };
+    const started = !!(r.thru || (r.rounds && r.rounds.length) || Number(r.currentRound) > 0 || teePassed || (totalRaw != null && totalRaw !== '' && r.status !== 'not started'));
+    players[ALIAS[name] || name] = { score: toPar(totalRaw), cut: !isCut, thru: r.thru || '', started };
+    // Leaderboard doesn't populate `thru` mid-round (a known Slash Golf gap) — queue a per-player
+    // scorecard lookup for anyone plausibly still out on the course right now.
+    if (started && !isCut && !r.thru && r.playerId) needsThru.push({ name: ALIAS[name] || name, playerId: r.playerId });
+  }
+
+  // Fill in real hole-progress for in-progress players via /scorecards (bounded + time-capped so
+  // a big field can't blow past a function timeout or hammer the rate limit).
+  if (needsThru.length) {
+    const budget = needsThru.slice(0, 60);
+    const started = Date.now();
+    await Promise.all(budget.map(async (p) => {
+      if (Date.now() - started > 7000) return;  // stop firing new requests past ~7s
+      try {
+        const sUrl = `https://${HOST}/scorecards?orgId=${ORG}&tournId=${E.tournId}&year=${YEAR}&playerId=${p.playerId}`;
+        const sc = await (await fetch(sUrl, { headers: { 'X-RapidAPI-Key': KEY, 'X-RapidAPI-Host': HOST } })).json();
+        const rounds = sc.scorecard || sc.rounds || (Array.isArray(sc) ? sc : []);
+        if (!rounds.length) return;
+        const last = rounds[rounds.length - 1];
+        const holes = last.holes || last.holeScores || [];
+        const played = holes.filter(h => h && (h.score != null || h.strokes != null)).length;
+        if (played > 0 && played < 18) players[p.name].thru = played;
+      } catch (e) { /* leave as-is on any per-player failure */ }
+    }));
   }
 
   // Round number: Slash Golf reports this per-player (currentRound), not at the top level.
